@@ -1,0 +1,1 @@
+# Monitorar_Recursos_Config_Eventbridge
