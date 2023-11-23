@@ -16,7 +16,7 @@ resource "aws_vpc" "vpc_LAB" {
     cidr_block =  var.network_cidr
     enable_dns_hostnames = true
 }
-# Criando duas subredes em zonas de disponibilidade diferentes
+# Criando uma subnet em zonas de disponibilidade diferentes
 resource "aws_subnet" "Subnet_LAB" {
   count           = var.subnet_count
   vpc_id          = aws_vpc.vpc_LAB.id
@@ -46,4 +46,54 @@ resource "aws_route_table_association" "public_subnet" {
   subnet_id      = aws_subnet.Subnet_LAB[count.index].id
   route_table_id = aws_route_table.public.id
   depends_on     = [aws_internet_gateway.Gateway_LAB]
+}
+
+
+
+
+# Criação do DB Subnet Group
+resource "aws_db_subnet_group" "db_subnet_group" {
+  name       = "subnetgroup_rds"
+  subnet_ids = aws_subnet.Subnet_LAB[*].id  # Usa todas as subnets criadas acima
+}
+
+
+
+# Criação do Security Group para a Instância do RDS
+resource "aws_security_group" "mysql_sg" {
+  vpc_id = aws_vpc.vpc_LAB.id
+
+  ingress {
+    from_port = 3306
+    to_port   = 3306
+    protocol  = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port = 0
+    to_port   = 0
+    protocol  = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+## Criando uma RDS
+resource "aws_db_instance" "instancia_wordpress" {
+  identifier           = "bdwordpress"
+  allocated_storage    = 20
+  engine               = "mysql"
+  engine_version       = "5.7"
+  instance_class       = "db.t2.micro"
+  #name                 = "wordpress"
+  username             = "admin"
+  password             = "@#$asdfd8@"
+  parameter_group_name = "default.mysql5.7"
+  publicly_accessible  = false
+  db_subnet_group_name = aws_db_subnet_group.db_subnet_group.name
+  vpc_security_group_ids = [aws_security_group.mysql_sg.id]
+
+  tags = {
+    Name = "LAB"
+  }
 }
